@@ -84,6 +84,27 @@ Below the map are the current action with the context percentage, and the last 1
 | --- | --- | --- |
 | ![A change of model](docs/map-switch.png) | ![After the answer](docs/map-after.png) | ![Light colours](docs/map-light.png) |
 
+## Lanes
+
+With `view` set to `lanes` or `both` the pane draws the last two minutes on a time axis, one lane per station, with now at the right edge. The map shows where the work is; the lanes also show when, for how long and what ran together.
+
+- **A bar** is one call, from its start to its end. A running one reaches the right edge and carries a light cap there.
+- **Bars one above another** in a lane ran at the same time, up to three rows.
+- **Red** is an error, **hatched red** a refusal by a hook. A red dot beside a lane stays until your next message, as on the map.
+- **A hollow bar** is a subagent's call; a dashed one is what a hook brought unasked.
+- **Subagents** each get a narrow lane of their own under Agents, up to four, with their calls drawn whole. One launched to run on goes by what it was started with, another by its number.
+- **Your message** is a mark on your lane with a line down all of them; the answer is a ring, a change of model a mark on Model.
+- **The number** at the end of a lane is how often the station was used this session.
+- **Under the pointer** a bar says its station, its name from the feed and how long it took. This works in the desktop app; an editor draws the lanes as an image.
+
+Three buttons at the top of the pane, Map, Lanes and Both, switch the view for the session; the `view` option sets the one a session starts with. A terminal draws words only and has no buttons.
+
+Alone, the lanes carry a head with the model, how much is running and the context window as a bar marked at 70% and 90%. Under the map they go without it.
+
+```bash
+echo '{"view":"both"}' | claude plugin configure lot-map@lot-map --values-stdin
+```
+
 ## Options
 
 The install offers them on a screen. Later, use `/config` in a terminal or `claude plugin configure`, then restart the session.
@@ -102,6 +123,7 @@ The install offers them on a screen. Later, use `/config` in a terminal or `clau
 | `theme` | `auto` | the map's colours: `dark`, `light`, or `auto`, which is dark on a dark surface and light on a light one |
 | `background` | `solid` | the map's own background, or `transparent`, which lets the pane behind it show through. The rim around the labels keeps the background's colour, so on a surface of another shade it shows as a faint halo |
 | `colors` | none | colours of your own, each as `name=#rrggbb`; see [Colours of your own](#colours-of-your-own) |
+| `view` | `map` | what the pane draws when a session starts: `map`, `lanes`, or `both`, the map with the lanes under it; see [Lanes](#lanes) |
 | `layout` | `you-top` | where you are on the map: `you-top`, or `you-bottom`, which turns the ring half a turn so that you are at the bottom and the network and the browser at the top |
 
 For example, Russian labels and your own memory server:

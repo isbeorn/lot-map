@@ -60,6 +60,8 @@ export interface Setup {
   colors: Partial<Palette>;
   /** Who sits at the top of the ring: the person, or the network with the person at the bottom. */
   layout: 'you-top' | 'you-bottom';
+  /** What the pane draws: the map, the lanes of the last two minutes, or the map with the lanes under it. */
+  view: 'map' | 'lanes' | 'both';
 }
 
 const DEFAULT_CORE_NAME = 'CLAUDE';
@@ -107,6 +109,7 @@ export function setupFrom(options: Readonly<Record<string, unknown>> = {}): Setu
     background: options.background === 'transparent' ? 'transparent' : 'solid',
     colors: colorsFrom(options.colors),
     layout: options.layout === 'you-bottom' ? 'you-bottom' : 'you-top',
+    view: options.view === 'lanes' || options.view === 'both' ? options.view : 'map',
   };
 }
 
@@ -1234,6 +1237,276 @@ const XML_ESCAPES: Record<string, string> = {
 
 function escapeXml(text: string): string {
   return text.replace(/[<>&"]/g, (c) => XML_ESCAPES[c] ?? c);
+}
+
+// ---- the lanes --------------------------------------------------------------------------------
+
+/** How far back the lanes show. */
+export const LANES_WINDOW_MS = 2 * MS_PER_MINUTE;
+const LANES_HEAD = 46;
+const LANES_HEAD_NONE = 8;
+const LANES_FOOT = 22;
+const LANE_HEIGHT = 22;
+const LANES_LEFT = 74;
+const LANES_RIGHT = 420;
+const LANE_ROWS_MAX = 3;
+const BAR_MAX = 12;
+const BAR_MIN_WIDTH = 2.5;
+/** A bar keeps its row a moment longer than it lasted, so instant calls side by side do not hide one another. */
+const ROW_HOLD_MS = 1500;
+/** How long the drawing keeps moving by itself when nothing redraws it. */
+const SCROLL_MS = 10 * MS_PER_MINUTE;
+const LANE_TICKS_MS = [30_000, 60_000, 90_000];
+const LANE_LABEL_SIZE = 10.5;
+const LANE_LABEL_ROOM = 100;
+const GAUGE_LEFT = 250;
+/** A subagent's own lane under the agents' one: lower than a station's, and at most this many of them. */
+const CREW_LANE_HEIGHT = 16;
+const CREW_LANES_MAX = 4;
+const CREW_LABEL_MAX = 11;
+
+/** One bar of a lane: a call from its start to its end, or to the right edge while it runs. */
+function bar(e: Entry, left: number, width: number, y: number, h: number, c: Palette): string {
+  const box = `x="${n1(left)}" y="${n1(y)}" width="${n1(width)}" height="${n1(h)}"`;
+  const isRunning = e.status === 'run';
+  let base = e.station === 'memory' ? c.mem : c.accent;
+  let lit = e.station === 'memory' ? c.memHot : c.hot;
+
+  if (e.station === 'model') {
+    base = c.dim;
+    lit = c.bone;
+  }
+
+  if (e.status === 'err') {
+    return `<rect ${box} fill="${c.red}"/>`;
+  }
+
+  if (e.status === 'block') {
+    return `<rect ${box} fill="url(#lot-hatch)" stroke="${c.red}" stroke-width=".8"/>`;
+  }
+
+  // A hollow bar is a call the main loop did not make: a subagent's, or, dashed, what a hook brought unasked.
+  if (e.from !== 'core') {
+    const dash = e.from === 'inbound' ? ' stroke-dasharray="2 2"' : '';
+
+    return `<rect ${box} fill="none" stroke="${isRunning ? lit : base}" stroke-width="1"${dash}/>`;
+  }
+
+  return `<rect ${box} fill="${isRunning ? lit : base}"${isRunning ? '' : ' opacity=".6"'}/>`;
+}
+
+/** The row each call takes in its lane: calls that overlap go one above another, up to three rows. */
+function stack(calls: readonly Entry[]): number[] {
+  const ends: number[] = [];
+
+  return calls.map((e) => {
+    let row = ends.findIndex((end) => end <= e.startedAt);
+
+    if (row < 0) {
+      row = Math.min(ends.length, LANE_ROWS_MAX - 1);
+    }
+
+    ends[row] = Math.max(ends[row] ?? 0, e.endedAt ?? Infinity, e.startedAt + ROW_HOLD_MS);
+
+    return row;
+  });
+}
+
+/**
+ * The last two minutes as lanes, one per station, on one time axis with now at the right edge.
+ * A bar's length is how long a call took, bars one above another ran together, and what ended stays in sight
+ * until it leaves on the left. The bars move by themselves between redraws.
+ */
+export function drawLanes(board: Board, now: number, setup: Setup, hasHead = true): string {
+  const c: Palette = { ...(setup.theme === 'light' ? LIGHT : DARK), ...setup.colors };
+  const { t } = setup;
+  const top = hasHead ? LANES_HEAD : LANES_HEAD_NONE;
+
+  const perMs = (LANES_RIGHT - LANES_LEFT) / LANES_WINDOW_MS;
+  const travel = SCROLL_MS * perMs;
+  const x = (at: number): number => Math.max(LANES_LEFT - 6, LANES_RIGHT - (now - at) * perMs);
+  const seen = board.entries.filter(
+    (e) => e.startedAt <= now && (e.endedAt ?? now) >= now - LANES_WINDOW_MS
+  );
+  const running = board.entries.filter((e) => e.status === 'run');
+  // Every subagent with a call in sight, or still at work, has a lane of its own under the agents' lane.
+  const crew = [
+    ...new Set([...seen.flatMap((e) => e.agentId ?? []), ...(board.agents ?? [])]),
+  ].slice(0, CREW_LANES_MAX);
+  const crewAt = top + (indexOf('agents') + 1) * LANE_HEIGHT;
+  const crewRoom = crew.length * CREW_LANE_HEIGHT;
+  const bottom = top + STATIONS.length * LANE_HEIGHT + crewRoom;
+  const height = bottom + LANES_FOOT;
+
+  let body =
+    setup.background === 'transparent'
+      ? ''
+      : `<rect width="${W}" height="${height}" rx="12" fill="${c.ground}"/>`;
+  body +=
+    `<defs><pattern id="lot-hatch" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">` +
+    `<rect width="2" height="4" fill="${c.red}"/></pattern>` +
+    `<clipPath id="lot-lanes"><rect x="${LANES_LEFT}" y="${top}" width="${LANES_RIGHT - LANES_LEFT}" height="${bottom - top}"/></clipPath></defs>`;
+
+  if (hasHead) {
+    body += `<text x="12" y="20" ${FONT} font-size="12" letter-spacing="1.6" fill="${c.bone}">${escapeXml(setup.core)}`;
+
+    if (board.model !== undefined) {
+      body += `<tspan dx="8" font-size="9.5" letter-spacing="0" fill="${c.ash}">${escapeXml(shortModel(board.model))}</tspan>`;
+    }
+
+    body +=
+      `</text>` +
+      `<text x="12" y="35" ${FONT} font-size="9.5" fill="${running.length > 0 ? c.hot : c.dim}">` +
+      `${escapeXml(running.length > 0 ? `${t.running}: ${running.length}` : t.idle)}</text>`;
+
+    if (board.context !== undefined) {
+      const full = Math.max(0, Math.min(PERCENT_MAX, Math.round(board.context)));
+      const room = LANES_RIGHT - GAUGE_LEFT;
+      let fill = c.ash;
+
+      if (full >= CONTEXT_FULL) {
+        fill = c.red;
+      } else if (full >= CONTEXT_HIGH) {
+        fill = c.accent;
+      }
+
+      body +=
+        `<text x="${GAUGE_LEFT}" y="20" ${FONT} font-size="9.5" fill="${c.ash}">${escapeXml(t.context)}</text>` +
+        `<text x="${LANES_RIGHT}" y="20" text-anchor="end" ${FONT} font-size="9.5" fill="${fill}">${full}%</text>` +
+        `<rect x="${GAUGE_LEFT}" y="28" width="${room}" height="5" fill="${c.spoke}"/>` +
+        `<rect x="${GAUGE_LEFT}" y="28" width="${n1((room * full) / PERCENT_MAX)}" height="5" fill="${fill}"/>`;
+
+      for (const mark of [CONTEXT_HIGH, CONTEXT_FULL]) {
+        body += `<rect x="${n1(GAUGE_LEFT + (room * mark) / PERCENT_MAX)}" y="25" width="1" height="11" fill="${c.dim}"/>`;
+      }
+    }
+  }
+
+  let moving = '';
+  let caps = '';
+
+  /** What a bar or a mark says under the pointer: the station, the name the feed has for it, and how long it took. */
+  const tip = (e: Entry, shape: string): string => {
+    let took = '';
+
+    if (e.endedAt === undefined) {
+      took = ` · ${t.running}`;
+    } else if (e.endedAt > e.startedAt) {
+      took = ` · ${formatMs(e.endedAt - e.startedAt, t)}`;
+    }
+
+    return `<g><title>${escapeXml(`${t.stations[e.station]}: ${e.label}${took}`)}</title>${shape}</g>`;
+  };
+
+  /** The bars of one lane, stacked where they overlap. */
+  const lay = (calls: readonly Entry[], y: number, room: number, hasCap: boolean): void => {
+    const rowOf = stack(calls);
+    const rows = Math.max(1, ...rowOf.map((row) => row + 1));
+    const h = Math.min(BAR_MAX, (room - 6) / rows - 1);
+    const first = y + (room - (h + 1) * rows + 1) / 2;
+
+    calls.forEach((e, k) => {
+      const left = x(e.startedAt);
+      const at = first + (rowOf[k] ?? 0) * (h + 1);
+
+      if (e.endedAt === undefined) {
+        // A running bar reaches past the right edge by as far as the drawing will move, so it stays joined to now.
+        moving += tip(e, bar(e, left, LANES_RIGHT - left + travel, at, h, c));
+
+        if (hasCap) {
+          caps += `<rect x="${LANES_RIGHT - 2}" y="${n1(at - 1)}" width="2" height="${n1(h + 2)}" fill="${c.bone}"/>`;
+        }
+      } else {
+        moving += tip(e, bar(e, left, Math.max(BAR_MIN_WIDTH, x(e.endedAt) - left), at, h, c));
+      }
+    });
+  };
+
+  STATIONS.forEach((s, i) => {
+    const y = top + i * LANE_HEIGHT + (i > indexOf('agents') ? crewRoom : 0);
+    const name = t.stations[s.id];
+    const count = board.counts[s.id] ?? 0;
+    const size = Math.min(LANE_LABEL_SIZE, LANE_LABEL_ROOM / name.length);
+
+    if (i % 2 === 0) {
+      body += `<rect x="${LANES_LEFT}" y="${y + 1}" width="${LANES_RIGHT - LANES_LEFT}" height="${LANE_HEIGHT - 2}" fill="${c.raised}"/>`;
+    }
+
+    body += `<text x="12" y="${y + 15}" ${FONT} font-size="${n1(size)}" fill="${s.id === 'memory' ? c.mem : c.ash}">${escapeXml(name)}</text>`;
+
+    if (count > 0) {
+      body += `<text x="${W - 10}" y="${y + 15}" text-anchor="end" ${FONT} font-size="9.5" fill="${c.dim}">${count}</text>`;
+    }
+
+    if ((board.faults?.[s.id] ?? 0) > 0) {
+      body += `<circle cx="${LANES_RIGHT + 7}" cy="${y + LANE_HEIGHT / 2}" r="2.8" fill="${c.red}"/>`;
+    }
+
+    const middle = y + LANE_HEIGHT / 2;
+    const own = seen.filter((e) => e.station === s.id);
+    const isMoment = (e: Entry): boolean =>
+      e.mark !== undefined || (s.id === 'you' && e.from === 'inbound');
+
+    // A moment, not a stretch: your message, the answer, a change of model.
+    for (const e of own.filter(isMoment)) {
+      const left = x(e.startedAt);
+
+      if (e.mark === 'done') {
+        moving += tip(
+          e,
+          `<circle cx="${n1(left)}" cy="${middle}" r="3.5" fill="none" stroke="${c.bone}" stroke-width="1.2"/>`
+        );
+      } else {
+        moving += tip(e, `<path d="M${n1(left)} ${middle - 5}l4 5l-4 5l-4 -5z" fill="${c.bone}"/>`);
+      }
+
+      if (e.mark === undefined) {
+        moving += `<rect x="${n1(left)}" y="${top}" width=".8" height="${bottom - top}" fill="${c.dim}"/>`;
+      }
+    }
+
+    lay(
+      own.filter((e) => !isMoment(e)),
+      y,
+      LANE_HEIGHT,
+      s.id !== 'model'
+    );
+  });
+
+  crew.forEach((agentId, k) => {
+    const y = crewAt + k * CREW_LANE_HEIGHT;
+    // A subagent launched to run on is known by what it was started with; another goes by its number.
+    const launch = board.entries.find((e) => e.station === 'agents' && e.task === agentId);
+    const name = (launch?.label ?? `${t.subagent} ${k + 1}`).slice(0, CREW_LABEL_MAX);
+    body +=
+      `<rect x="${LANES_LEFT}" y="${y}" width="${LANES_RIGHT - LANES_LEFT}" height="${CREW_LANE_HEIGHT - 1}" fill="${c.spoke}"/>` +
+      `<text x="18" y="${y + 11}" ${FONT} font-size="8.5" fill="${c.dim}">${escapeXml(name)}</text>`;
+    // In its own lane a subagent's call is drawn whole; in the station's lane the same call is the hollow one.
+    lay(
+      seen
+        .filter((e) => e.agentId === agentId && e.mark === undefined)
+        .map((e) => ({ ...e, from: 'core' as const })),
+      y,
+      CREW_LANE_HEIGHT,
+      false
+    );
+  });
+
+  for (const back of LANE_TICKS_MS) {
+    const at = n1(LANES_RIGHT - back * perMs);
+    body +=
+      `<rect x="${at}" y="${top}" width=".8" height="${bottom - top}" fill="${c.spoke}"/>` +
+      `<text x="${at}" y="${bottom + 14}" text-anchor="middle" ${FONT} font-size="9" fill="${c.dim}">-${escapeXml(t.seconds(String(back / MS_PER_SECOND)))}</text>`;
+  }
+
+  body +=
+    `<g clip-path="url(#lot-lanes)"><g>` +
+    `<animateTransform attributeName="transform" type="translate" from="0 0" to="${n1(-travel)} 0" dur="${clock(SCROLL_MS)}" fill="freeze"/>` +
+    `${moving}</g>${caps}</g>` +
+    `<rect x="${LANES_RIGHT}" y="${top - 3}" width="1" height="${bottom - top + 6}" fill="${c.ash}"/>` +
+    `<text x="${LANES_RIGHT}" y="${bottom + 14}" text-anchor="end" ${FONT} font-size="9" fill="${c.bone}">${escapeXml(t.now)}</text>`;
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${height}" width="${W * 2}" height="${height * 2}">${setup.theme === 'auto' ? lightRules(setup.colors) : ''}${body}</svg>`;
 }
 
 // ---- the feed ---------------------------------------------------------------------------------

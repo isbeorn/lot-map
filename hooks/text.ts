@@ -23,6 +23,8 @@ export interface Strings {
   askedPermission: (tool: string) => string;
   checkBefore: (tool: string) => string;
   running: string;
+  now: string;
+  views: Record<'map' | 'lanes' | 'both', string>;
   nothingYet: string;
   noCounts: string;
   idle: string;
@@ -72,6 +74,8 @@ const en: Strings = {
   askedPermission: (tool) => `asked permission: ${tool}`,
   checkBefore: (tool) => `check before ${tool}`,
   running: 'running',
+  views: { map: 'Map', lanes: 'Lanes', both: 'Both' },
+  now: 'now',
   nothingYet: 'Nothing yet.',
   noCounts: 'No counts yet.',
   idle: 'Nothing is running.',
@@ -121,6 +125,8 @@ const ru: Strings = {
   askedPermission: (tool) => `спросил разрешение: ${tool}`,
   checkBefore: (tool) => `проверка перед ${tool}`,
   running: 'идёт',
+  views: { map: 'Карта', lanes: 'Дорожки', both: 'Вместе' },
+  now: 'сейчас',
   nothingYet: 'Пока ничего не было.',
   noCounts: 'Счётчики пусты.',
   idle: 'Сейчас ничего не выполняется.',
@@ -170,6 +176,8 @@ const es: Strings = {
   askedPermission: (tool) => `pidió permiso: ${tool}`,
   checkBefore: (tool) => `comprobación antes de ${tool}`,
   running: 'en curso',
+  views: { map: 'Mapa', lanes: 'Carriles', both: 'Ambos' },
+  now: 'ahora',
   nothingYet: 'Todavía nada.',
   noCounts: 'Aún no hay recuentos.',
   idle: 'No hay nada en ejecución.',
@@ -219,6 +227,8 @@ const fr: Strings = {
   askedPermission: (tool) => `autorisation demandée : ${tool}`,
   checkBefore: (tool) => `vérification avant ${tool}`,
   running: 'en cours',
+  views: { map: 'Carte', lanes: 'Pistes', both: 'Les deux' },
+  now: 'maintenant',
   nothingYet: 'Rien pour le moment.',
   noCounts: 'Aucun compteur pour le moment.',
   idle: 'Rien en cours.',
@@ -268,6 +278,8 @@ const de: Strings = {
   askedPermission: (tool) => `um Erlaubnis gefragt: ${tool}`,
   checkBefore: (tool) => `Prüfung vor ${tool}`,
   running: 'läuft',
+  views: { map: 'Karte', lanes: 'Bahnen', both: 'Beides' },
+  now: 'jetzt',
   nothingYet: 'Noch nichts.',
   noCounts: 'Noch keine Zählerstände.',
   idle: 'Nichts läuft.',
@@ -317,6 +329,8 @@ const it: Strings = {
   askedPermission: (tool) => `permesso chiesto: ${tool}`,
   checkBefore: (tool) => `controllo prima di ${tool}`,
   running: 'in corso',
+  views: { map: 'Mappa', lanes: 'Corsie', both: 'Entrambe' },
+  now: 'ora',
   nothingYet: 'Ancora niente.',
   noCounts: 'Ancora nessun conteggio.',
   idle: 'Niente in esecuzione.',

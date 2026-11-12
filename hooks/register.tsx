@@ -1,12 +1,13 @@
 import { atom, read, update } from 'claude-code';
 import type { EngineInterface, Register } from 'claude-code';
 
-import type { Board, Entry, StationId, Status } from '../types';
+import type { Board, Entry, StationId, Status, View } from '../types';
 import {
   STATIONS,
   classify,
   clean,
   describeNow,
+  drawLanes,
   drawMap,
   firstLine,
   foldRows,
@@ -35,6 +36,10 @@ const EMPTY_BOARD: Board = { entries: [], counts: {} };
 
 // Change the tag when a field of Entry or Board changes: it declines what an earlier version stored.
 const board = atom({ plugin: 'lot-map', key: 'board' } as const, EMPTY_BOARD, { shape: 'board-3' });
+
+// The view picked on the pane, for the session; until one is picked the `view` option holds.
+const picked = atom({ plugin: 'lot-map', key: 'view' } as const, 'unset' as View | 'unset');
+const VIEWS: readonly View[] = ['map', 'lanes', 'both'];
 
 const newId = (now: number): string =>
   `${now.toString(ID_RADIX)}${Math.random()
@@ -582,14 +587,49 @@ export const register: Register = (on, options) => {
       );
     }
 
-    const { Svg } = $.ui.resolve(e);
+    const { Svg, Button } = $.ui.resolve(e);
+    const choice = await read($, picked);
+    const view = choice === 'unset' ? setup.view : choice;
+    const toggle = (
+      <Box
+        flexDirection="row"
+        gap={1}
+      >
+        {VIEWS.map((v) => (
+          <Button
+            key={`view-${v}`}
+            label={t.views[v]}
+            {...(v === view ? { variant: 'primary' as const } : { dimColor: true })}
+            onPress={() => void quietly(() => update($, picked, () => v))}
+          />
+        ))}
+      </Box>
+    );
+
+    const alt = `${t.title}. ${describeNow(state, t)}`;
+    const map =
+      view === 'lanes' ? null : (
+        <Svg
+          source={drawMap(state, now, setup)}
+          alt={alt}
+        />
+      );
+    // Under the map the lanes go without their head: the map's centre already names the model and the context.
+    const lanes =
+      view === 'map' ? null : (
+        <Svg
+          source={drawLanes(state, now, setup, view === 'lanes')}
+          alt={alt}
+          // Drawn in a frame, so a bar under the pointer says what it was.
+          isInteractive
+        />
+      );
 
     return (
       <Box flexDirection="column">
-        <Svg
-          source={drawMap(state, now, setup)}
-          alt={`${t.title}. ${describeNow(state, t)}`}
-        />
+        {toggle}
+        {map}
+        {lanes}
         {current}
         {feed}
       </Box>

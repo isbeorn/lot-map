@@ -2,6 +2,12 @@
 
 What changed in each version of lot-map, newest first. To get a new version, see [Updating](README.md#updating).
 
+## 0.3.9 (2026-11-12)
+
+- New option `view`: `lanes` draws the last two minutes on a time axis, one lane per station, and `both` puts the lanes under the map. `map`, the default, is the pane as it was.
+- Three buttons at the top of the pane switch between the map, the lanes and both for the session.
+- In the lanes each subagent has a lane of its own under Agents, and a bar under the pointer says what it was.
+
 ## 0.3.8 (2026-11-11)
 
 - Italian labels: `language` takes `it`. Contributed by kesi26. (#20)

@@ -30,6 +30,9 @@ export interface Entry {
   mark?: 'switch' | 'done';
 }
 
+/** What the pane draws. */
+export type View = 'map' | 'lanes' | 'both';
+
 export interface Board {
   entries: Entry[];
   counts: Partial<Record<StationId, number>>;
@@ -49,6 +52,6 @@ export interface Board {
 
 declare module 'claude-code' {
   interface PluginState {
-    'lot-map': { board: Shaped<Board> };
+    'lot-map': { board: Shaped<Board>; view: View | 'unset' };
   }
 }
