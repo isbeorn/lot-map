@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "lot_map": {
+      "command": "node",
+      "args": ["./codex/dist/server.mjs"],
+      "cwd": ".",
+      "env_vars": ["LOT_MAP_DATA"]
+    }
+  }
+}

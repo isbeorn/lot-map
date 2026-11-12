@@ -7,17 +7,28 @@
     "typecheck": "tsc --noEmit -p .claude-plugin/types/tsconfig.json",
     "format": "prettier --write \"{hooks,types}/**/*.{ts,tsx}\"",
     "format:check": "prettier --check \"{hooks,types}/**/*.{ts,tsx}\"",
-    "test": "claude plugin test ."
+    "test": "claude plugin test .",
+    "build:codex": "node codex/build.mjs",
+    "package:codex": "node codex/package.mjs",
+    "typecheck:codex": "tsc -p codex/tsconfig.json",
+    "lint:codex": "eslint --ext .ts codex",
+    "test:codex": "node codex/test.mjs",
+    "format:codex": "prettier --write \"codex/*.{ts,mjs,json}\" \".codex-plugin/*.json\""
   },
   "devDependencies": {
+    "@modelcontextprotocol/ext-apps": "^1.7.5",
+    "@modelcontextprotocol/sdk": "^1.32.2",
     "@trivago/prettier-plugin-sort-imports": "5.2.2",
+    "@types/node": "^22.20.5",
     "@typescript-eslint/eslint-plugin": "8.34.0",
     "@typescript-eslint/parser": "8.34.0",
+    "esbuild": "^0.25.12",
     "eslint": "8.57.1",
     "eslint-config-prettier": "10.1.5",
     "eslint-plugin-import": "2.31.0",
     "eslint-plugin-unused-imports": "4.1.4",
     "prettier": "3.5.3",
-    "typescript": "5.8.3"
+    "typescript": "5.8.3",
+    "zod": "^4.6.7"
   }
 }

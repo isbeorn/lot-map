@@ -1,6 +1,6 @@
 # lot-map
 
-A mod for Claude Code: a live map of the work, in a pane beside the chat. Every tool call, model step, hook and skill sends a pulse from the centre to its station, so you see memory, files, shell, web and agents at work instead of reading a list of commands.
+A plugin for Claude Code and Codex: a live map of the work, in a pane beside the chat. Activity sends a pulse from the centre to its station, so you see memory, files, shell, web and agents at work instead of reading a list of commands. The two adapters share the map and timeline renderer.
 
 ![The map during a work session](docs/demo.gif)
 
@@ -9,6 +9,23 @@ A mod for Claude Code: a live map of the work, in a pane beside the chat. Every 
 This is a fork of [alexeyw/lot-map](https://github.com/alexeyw/lot-map), kept at [isbeorn/lot-map](https://github.com/isbeorn/lot-map). The commands below install the fork; issues and pull requests for it go to the fork's repository.
 
 ## Install
+
+### Codex
+
+From a clone of this repository:
+
+```bash
+npm ci
+npm run package:codex
+codex plugin marketplace add ./dist/codex-marketplace
+codex plugin add lot-map@lot-map-codex
+```
+
+Restart Codex, review and trust the plugin's hooks (`/hooks` in the CLI), then ask **“Open Lot Map for this session.”** The MCP App requests Codex's side panel; an **Open panel** button is also available on the inline card. It does not open automatically at session start.
+
+The Codex adapter captures local lifecycle hooks and stores a bounded history on disk. Hosted web search, skill activation, context percentage and injected hook content are not exposed. See the [Codex guide](codex/README.md) for coverage, privacy, options and updates.
+
+### Claude Code
 
 At the prompt of a terminal session:
 
@@ -28,6 +45,8 @@ The pane opens by itself when a session starts. In a terminal it needs at least 
 
 ## Updating
 
+These commands update Claude Code. For Codex, use the [Codex guide](codex/README.md#install).
+
 From a shell:
 
 ```bash
@@ -40,6 +59,8 @@ Then start a new session. The first command is needed: without it the second one
 What each version changed is in [CHANGELOG.md](CHANGELOG.md).
 
 ## What lights up
+
+The detailed behavior below describes the Claude adapter. Codex uses the same stations and visuals, subject to its [hook coverage](codex/README.md#coverage-and-limits).
 
 | Station | When |
 | --- | --- |
@@ -154,6 +175,8 @@ echo '{"theme":"dark","colors":"accent=#7fb4ff,active=#b8d6ff,text=#e6edf7"}' | 
 
 ## What it shows and what it keeps
 
+This section describes Claude. Codex stores sanitized hook receipts locally; see [Codex stored data](codex/README.md#options-and-stored-data).
+
 The mod makes no network requests, reads no files, runs no processes, calls no model and adds nothing to the conversation. Its rows live only for the session.
 
 Like any mod that follows tool calls, it is handed every call's whole input, including command lines and the text written to files. It takes names from that and nothing else; the code that does so is `classify` in `hooks/map.ts`. A marketplace added from this repository follows its `main` branch, so an update brings whatever is there: read the diff before updating if that matters to you.
@@ -176,6 +199,17 @@ Control characters are taken out of every label before it is drawn.
 A fault on the map never reaches a tool call or a model turn.
 
 ## Developing
+
+For the Codex adapter:
+
+```bash
+npm run lint:codex
+npm run typecheck:codex
+npm run test:codex
+npm run package:codex
+```
+
+For the Claude adapter:
 
 ```bash
 claude plugin test .

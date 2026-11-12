@@ -3,3 +3,5 @@
 .claude-plugin/types/
 .mcpb-cache/
 node_modules/
+codex/dist/
+dist/
