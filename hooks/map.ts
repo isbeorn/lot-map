@@ -60,8 +60,6 @@ export interface Setup {
   colors: Partial<Palette>;
   /** Who sits at the top of the ring: the person, or the network with the person at the bottom. */
   layout: 'you-top' | 'you-bottom';
-  /** What the pane draws: the map, the lanes of the last two minutes, or the map with the lanes under it. */
-  view: 'map' | 'lanes' | 'both';
 }
 
 const DEFAULT_CORE_NAME = 'CLAUDE';
@@ -109,7 +107,6 @@ export function setupFrom(options: Readonly<Record<string, unknown>> = {}): Setu
     background: options.background === 'transparent' ? 'transparent' : 'solid',
     colors: colorsFrom(options.colors),
     layout: options.layout === 'you-bottom' ? 'you-bottom' : 'you-top',
-    view: options.view === 'lanes' || options.view === 'both' ? options.view : 'map',
   };
 }
 
@@ -1243,8 +1240,7 @@ function escapeXml(text: string): string {
 
 /** How far back the lanes show. */
 export const LANES_WINDOW_MS = 2 * MS_PER_MINUTE;
-const LANES_HEAD = 46;
-const LANES_HEAD_NONE = 8;
+const LANES_TOP = 8;
 const LANES_FOOT = 22;
 const LANE_HEIGHT = 22;
 const LANES_LEFT = 74;
@@ -1259,7 +1255,6 @@ const SCROLL_MS = 10 * MS_PER_MINUTE;
 const LANE_TICKS_MS = [30_000, 60_000, 90_000];
 const LANE_LABEL_SIZE = 10.5;
 const LANE_LABEL_ROOM = 100;
-const GAUGE_LEFT = 250;
 /** A subagent's own lane under the agents' one: lower than a station's, and at most this many of them. */
 const CREW_LANE_HEIGHT = 16;
 const CREW_LANES_MAX = 4;
@@ -1315,12 +1310,13 @@ function stack(calls: readonly Entry[]): number[] {
 /**
  * The last two minutes as lanes, one per station, on one time axis with now at the right edge.
  * A bar's length is how long a call took, bars one above another ran together, and what ended stays in sight
- * until it leaves on the left. The bars move by themselves between redraws.
+ * until it leaves on the left. The bars move by themselves between redraws. It lies under the map, whose centre
+ * already names the model and the context.
  */
-export function drawLanes(board: Board, now: number, setup: Setup, hasHead = true): string {
+export function drawLanes(board: Board, now: number, setup: Setup): string {
   const c: Palette = { ...(setup.theme === 'light' ? LIGHT : DARK), ...setup.colors };
   const { t } = setup;
-  const top = hasHead ? LANES_HEAD : LANES_HEAD_NONE;
+  const top = LANES_TOP;
 
   const perMs = (LANES_RIGHT - LANES_LEFT) / LANES_WINDOW_MS;
   const travel = SCROLL_MS * perMs;
@@ -1328,7 +1324,6 @@ export function drawLanes(board: Board, now: number, setup: Setup, hasHead = tru
   const seen = board.entries.filter(
     (e) => e.startedAt <= now && (e.endedAt ?? now) >= now - LANES_WINDOW_MS
   );
-  const running = board.entries.filter((e) => e.status === 'run');
   // Every subagent with a call in sight, or still at work, has a lane of its own under the agents' lane.
   const crew = [
     ...new Set([...seen.flatMap((e) => e.agentId ?? []), ...(board.agents ?? [])]),
@@ -1346,41 +1341,6 @@ export function drawLanes(board: Board, now: number, setup: Setup, hasHead = tru
     `<defs><pattern id="lot-hatch" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">` +
     `<rect width="2" height="4" fill="${c.red}"/></pattern>` +
     `<clipPath id="lot-lanes"><rect x="${LANES_LEFT}" y="${top}" width="${LANES_RIGHT - LANES_LEFT}" height="${bottom - top}"/></clipPath></defs>`;
-
-  if (hasHead) {
-    body += `<text x="12" y="20" ${FONT} font-size="12" letter-spacing="1.6" fill="${c.bone}">${escapeXml(setup.core)}`;
-
-    if (board.model !== undefined) {
-      body += `<tspan dx="8" font-size="9.5" letter-spacing="0" fill="${c.ash}">${escapeXml(shortModel(board.model))}</tspan>`;
-    }
-
-    body +=
-      `</text>` +
-      `<text x="12" y="35" ${FONT} font-size="9.5" fill="${running.length > 0 ? c.hot : c.dim}">` +
-      `${escapeXml(running.length > 0 ? `${t.running}: ${running.length}` : t.idle)}</text>`;
-
-    if (board.context !== undefined) {
-      const full = Math.max(0, Math.min(PERCENT_MAX, Math.round(board.context)));
-      const room = LANES_RIGHT - GAUGE_LEFT;
-      let fill = c.ash;
-
-      if (full >= CONTEXT_FULL) {
-        fill = c.red;
-      } else if (full >= CONTEXT_HIGH) {
-        fill = c.accent;
-      }
-
-      body +=
-        `<text x="${GAUGE_LEFT}" y="20" ${FONT} font-size="9.5" fill="${c.ash}">${escapeXml(t.context)}</text>` +
-        `<text x="${LANES_RIGHT}" y="20" text-anchor="end" ${FONT} font-size="9.5" fill="${fill}">${full}%</text>` +
-        `<rect x="${GAUGE_LEFT}" y="28" width="${room}" height="5" fill="${c.spoke}"/>` +
-        `<rect x="${GAUGE_LEFT}" y="28" width="${n1((room * full) / PERCENT_MAX)}" height="5" fill="${fill}"/>`;
-
-      for (const mark of [CONTEXT_HIGH, CONTEXT_FULL]) {
-        body += `<rect x="${n1(GAUGE_LEFT + (room * mark) / PERCENT_MAX)}" y="25" width="1" height="11" fill="${c.dim}"/>`;
-      }
-    }
-  }
 
   let moving = '';
   let caps = '';

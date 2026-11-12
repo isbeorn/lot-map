@@ -2355,13 +2355,6 @@ const rects = (svg: string): { x: number; y: number; width: number; rest: string
     ),
   ].map((m) => ({ x: Number(m[1]), y: Number(m[2]), width: Number(m[3]), rest: m[4] ?? '' }));
 
-test('view is map unless it names the lanes or both', () => {
-  expect(setupFrom({}).view).toBe('map');
-  expect(setupFrom({ view: 'lanes' }).view).toBe('lanes');
-  expect(setupFrom({ view: 'both' }).view).toBe('both');
-  expect(setupFrom({ view: 'sideways' }).view).toBe('map');
-});
-
 test('a finished call is a bar as long as it took, placed by when it ran', () => {
   const now = 1_000_000;
   const svg = drawLanes(
@@ -2389,7 +2382,6 @@ test('a running call reaches the right edge and beyond, and carries a cap at now
   expect(Math.abs((bar?.x ?? 0) - (LANES_NOW_EDGE - 10_000 * LANES_PER_MS))).toBeLessThan(NEAR);
   expect((bar?.x ?? 0) + (bar?.width ?? 0)).toBeGreaterThan(LANES_NOW_EDGE + 1000);
   expect(rects(svg).some((r) => r.x === LANES_NOW_EDGE - 2 && r.width === 2)).toBe(true);
-  expect(svg).toContain('>running: 1<');
 });
 
 test('calls that ran together lie one above another in their lane', () => {
@@ -2461,64 +2453,12 @@ test('your message is a mark with a line down the lanes, the answer a ring', () 
   expect(count(svg, 'r="3.5" fill="none"')).toBe(1);
 });
 
-test('the head names the model and the context; under the map the lanes go without it', () => {
-  const board: Board = { entries: [], counts: {}, model: 'claude-opus-5-5', context: 66 };
-  const alone = drawLanes(board, 1000, DARK_SETUP);
-  expect(alone).toContain('CLAUDE');
-  expect(alone).toContain('>66%<');
-  expect(alone).toContain('Nothing is running.');
-  expect(alone).toContain('viewBox="0 0 460 288"');
-  const under = drawLanes(board, 1000, DARK_SETUP, false);
-  expect(under).not.toContain('CLAUDE');
-  expect(under).not.toContain('>66%<');
-  expect(under).toContain('viewBox="0 0 460 250"');
-  expect(drawLanes({ ...board, context: 95 }, 1000, DARK_SETUP)).toContain('fill="#e8654f">95%<');
-});
-
 test('the lanes speak the language and move by themselves', () => {
   const svg = drawLanes({ entries: [], counts: {} }, 1000, setupFrom({ language: 'de' }));
   expect(svg).toContain('>jetzt<');
   expect(svg).toContain('Netz');
   expect(svg).toContain('<animateTransform attributeName="transform" type="translate"');
   expect(svg).toContain('prefers-color-scheme: light');
-});
-
-test(
-  'view lanes shows the lanes in place of the map',
-  { options: { view: 'lanes' } },
-  async ($, on) => {
-    on('clock.now', () => ({ value: 1_000_000 }));
-    const ui = await $.ui.mount({ ...PANE, surface: 'desktop' });
-    const pictures = await ui.findAll({ type: 'Svg' });
-    expect(pictures.length).toBe(1);
-    expect(String(pictures[0]?.props.source)).toContain('lot-lanes');
-    expect(String(pictures[0]?.props.source)).toContain('CLAUDE');
-    await ui.unmount();
-  }
-);
-
-test(
-  'view both shows the map and under it the lanes',
-  { options: { view: 'both' } },
-  async ($, on) => {
-    on('clock.now', () => ({ value: 1_000_000 }));
-    const ui = await $.ui.mount({ ...PANE, surface: 'desktop' });
-    const sources = (await ui.findAll({ type: 'Svg' })).map((p) => String(p.props.source));
-    expect(sources.length).toBe(2);
-    expect(sources[0]).toContain('<ellipse');
-    expect(sources[1]).toContain('lot-lanes');
-    expect(sources[1]).not.toContain('CLAUDE');
-    await ui.unmount();
-  }
-);
-
-test('view map, the default, shows the map alone', async ($, on) => {
-  on('clock.now', () => ({ value: 1_000_000 }));
-  const ui = await $.ui.mount({ ...PANE, surface: 'desktop' });
-  const sources = (await ui.findAll({ type: 'Svg' })).map((p) => String(p.props.source));
-  expect(sources.length).toBe(1);
-  expect(sources[0]).not.toContain('lot-lanes');
-  await ui.unmount();
 });
 
 test('each subagent has a lane of its own under the agents, with its calls drawn whole', () => {
@@ -2544,7 +2484,7 @@ test('each subagent has a lane of its own under the agents, with its calls drawn
   };
   const svg = drawLanes(board, now, DARK_SETUP);
   // Three lanes of sixteen more than the ten stations take.
-  expect(svg).toContain('viewBox="0 0 460 336"');
+  expect(svg).toContain('viewBox="0 0 460 298"');
   expect(svg).toContain('>Audit the t<');
   expect(svg).toContain('>subagent 2<');
   expect(svg).toContain('>subagent 3<');
@@ -2553,15 +2493,15 @@ test('each subagent has a lane of its own under the agents, with its calls drawn
   const [hollow, whole] = rects(svg).filter((r) => Math.abs(r.x - at) < NEAR && r.width === 2.5);
   expect(hollow?.rest).toContain('fill="none"');
   expect(whole?.rest).toContain('fill="#e1ac6e"');
-  expect(whole?.y).toBeGreaterThan(46 + 8 * 22);
-  expect(whole?.y).toBeLessThan(46 + 8 * 22 + 16);
+  expect(whole?.y).toBeGreaterThan(8 + 8 * 22);
+  expect(whole?.y).toBeLessThan(8 + 8 * 22 + 16);
   // The stations after the agents move down by the three lanes.
   expect(svg).toContain(
-    `y="${46 + 8 * 22 + 48 + 15}" font-family="SF Mono, ui-monospace, Menlo, monospace" font-size="10.5" fill="#9ba1ab">Skills<`
+    `y="${8 + 8 * 22 + 48 + 15}" font-family="SF Mono, ui-monospace, Menlo, monospace" font-size="10.5" fill="#9ba1ab">Skills<`
   );
   expect(
     drawLanes({ entries: [], counts: {}, agents: ['1', '2', '3', '4', '5', '6'] }, now, DARK_SETUP)
-  ).toContain(`viewBox="0 0 460 ${288 + 4 * 16}"`);
+  ).toContain(`viewBox="0 0 460 ${250 + 4 * 16}"`);
 });
 
 test('a bar under the pointer names its station, its label and how long it took', () => {
@@ -2587,45 +2527,28 @@ test('a bar under the pointer names its station, its label and how long it took'
   expect(svg).toContain('<g><title>You: new message</title><path ');
 });
 
-test(
-  'the lanes are drawn in a frame, so the pointer works on them; the map stays an image',
-  { options: { view: 'both' } },
-  async ($, on) => {
-    on('clock.now', () => ({ value: 1_000_000 }));
-    const ui = await $.ui.mount({ ...PANE, surface: 'desktop' });
-    const [map, lanes] = await ui.findAll({ type: 'Svg' });
-    expect(map?.props.isInteractive).toBeUndefined();
-    expect(lanes?.props.isInteractive).toBe(true);
-    await ui.unmount();
-  }
-);
-
-test('the buttons at the top switch the view for the session, starting from the option', async ($, on) => {
+test('the pane shows the map and under it the lanes, both as images of one width', async ($, on) => {
   on('clock.now', () => ({ value: 1_000_000 }));
   const ui = await $.ui.mount({ ...PANE, surface: 'desktop' });
-  const buttons = await ui.findAll({ type: 'Button' });
-  expect(buttons.map((b) => b.props.label)).toEqual(['Map', 'Lanes', 'Both']);
-  expect(buttons.map((b) => b.props.variant)).toEqual(['primary', undefined, undefined]);
-  expect((await ui.findAll({ type: 'Svg' })).length).toBe(1);
-
-  await ui.press({ key: 'view-both' });
-  expect((await ui.findAll({ type: 'Svg' })).length).toBe(2);
-  expect((await ui.findAll({ type: 'Button' })).map((b) => b.props.variant)).toEqual([
-    undefined,
-    undefined,
-    'primary',
-  ]);
-
-  await ui.press({ key: 'view-lanes' });
-  const pictures = await ui.findAll({ type: 'Svg' });
-  expect(pictures.length).toBe(1);
-  expect(String(pictures[0]?.props.source)).toContain('lot-lanes');
+  const [map, lanes, ...more] = await ui.findAll({ type: 'Svg' });
+  expect(more.length).toBe(0);
+  expect(String(map?.props.source)).toContain('<ellipse');
+  expect(String(lanes?.props.source)).toContain('lot-lanes');
+  // An image fills the pane's width; a frame, which `isInteractive` asks for, was drawn narrower.
+  expect(map?.props.isInteractive).toBeUndefined();
+  expect(lanes?.props.isInteractive).toBeUndefined();
+  expect(String(map?.props.source)).toContain('viewBox="0 0 460 430" width="920"');
+  expect(String(lanes?.props.source)).toContain('viewBox="0 0 460 250" width="920"');
+  expect((await ui.findAll({ type: 'Button' })).length).toBe(0);
   await ui.unmount();
 });
 
-test('in a terminal there is nothing to switch', async ($, on) => {
-  on('clock.now', () => ({ value: 1_000_000 }));
-  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' });
-  expect((await ui.findAll({ type: 'Button' })).length).toBe(0);
-  await ui.unmount();
+test('the lanes have no head of their own: the map above names the model and the context', () => {
+  const svg = drawLanes(
+    { entries: [], counts: {}, model: 'claude-opus-5-5', context: 66 },
+    1000,
+    DARK_SETUP
+  );
+  expect(svg).not.toContain('CLAUDE');
+  expect(svg).not.toContain('66%');
 });

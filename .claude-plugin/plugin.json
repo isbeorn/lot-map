@@ -1,6 +1,6 @@
 {
   "name": "lot-map",
-  "version": "0.3.9",
+  "version": "0.3.10",
   "description": "A live map beside the chat: memory, files, shell, web, model, agents, skills and hooks light up as they are used",
   "license": "MIT",
   "types": "./types/index.d.ts",
@@ -8,7 +8,14 @@
     "language": {
       "type": "string",
       "title": "Language",
-      "options": ["en", "ru", "es", "fr", "de", "it"],
+      "options": [
+        "en",
+        "ru",
+        "es",
+        "fr",
+        "de",
+        "it"
+      ],
       "default": "en",
       "description": "The language of the labels on the map."
     },
@@ -22,7 +29,9 @@
       "type": "string",
       "multiple": true,
       "title": "Memory servers",
-      "default": ["memory"],
+      "default": [
+        "memory"
+      ],
       "description": "MCP servers whose tools light the Memory station."
     },
     "memoryCommands": {
@@ -68,14 +77,21 @@
     "theme": {
       "type": "string",
       "title": "Colours",
-      "options": ["auto", "dark", "light"],
+      "options": [
+        "auto",
+        "dark",
+        "light"
+      ],
       "default": "auto",
       "description": "The map's colours: dark, light, or auto, which is dark on a dark surface and light on a light one."
     },
     "background": {
       "type": "string",
       "title": "Background",
-      "options": ["solid", "transparent"],
+      "options": [
+        "solid",
+        "transparent"
+      ],
       "default": "solid",
       "description": "The map's own background, or transparent, which lets the pane behind it show through."
     },
@@ -89,16 +105,12 @@
     "layout": {
       "type": "string",
       "title": "Layout",
-      "options": ["you-top", "you-bottom"],
+      "options": [
+        "you-top",
+        "you-bottom"
+      ],
       "default": "you-top",
       "description": "Where you are on the map: at the top, or at the bottom with the network and the browser at the top."
-    },
-    "view": {
-      "type": "string",
-      "title": "View",
-      "options": ["map", "lanes", "both"],
-      "default": "map",
-      "description": "What the pane draws: the map, lanes that show the last two minutes on a time axis, or both, the map with the lanes under it."
     }
   }
 }

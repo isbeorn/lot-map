@@ -2,6 +2,11 @@
 
 What changed in each version of lot-map, newest first. To get a new version, see [Updating](README.md#updating).
 
+## 0.3.10 (2026-11-12)
+
+- The pane always shows the map with the lanes under it, both at the pane's full width. The `view` option and the buttons that switched views are gone.
+- The lanes are an image again, as the map is: drawn in a frame they came out narrower than the map. A bar no longer answers the pointer.
+
 ## 0.3.9 (2026-11-12)
 
 - New option `view`: `lanes` draws the last two minutes on a time axis, one lane per station, and `both` puts the lanes under the map. `map`, the default, is the pane as it was.
