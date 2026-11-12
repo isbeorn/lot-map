@@ -25,10 +25,9 @@ JavaScript and HTML. It does not require npm or this checkout at runtime.
 Keep the marketplace directory for upgrades; it can also be copied to another
 machine with Node.js installed.
 
-Restart the desktop app after installing a new local plugin. Review and trust
-Lot Map's hooks before expecting activity: the Codex CLI exposes this through
-`/hooks`. Installation alone does not trust hooks. Do not disable the sandbox
-or global approval protections to use this plugin.
+Start the Codex CLI with `codex`, open `/hooks`, and review and trust Lot Map's
+hooks. Installation alone does not trust hooks. Then restart the desktop app
+so it loads the plugin and the approved hooks.
 
 Ask Codex **“Open Lot Map for this session.”** The `lot_map_open` tool opens the
 MCP UI and requests the desktop panel. The **Open panel** button makes the same
@@ -40,9 +39,10 @@ session is selected once and stays selected. Use the session selector to
 switch; activity from different sessions is never combined. **Pause** stops
 polling and animation until **Resume** is clicked.
 
-To update, rebuild with `npm run package:codex`, reinstall with
-`codex plugin add lot-map@lot-map-codex`, and restart the app. If the hook
-definition changes, review its new version in `/hooks`.
+To update, run `npm ci` and `npm run package:codex` from the updated checkout,
+then reinstall with `codex plugin add lot-map@lot-map-codex`. If `/hooks` shows
+Lot Map's hooks as changed, review and trust the new versions. Then restart
+the desktop app and ask to open Lot Map again.
 
 ## Coverage and limits
 

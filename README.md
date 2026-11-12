@@ -12,7 +12,7 @@ This is a fork of [alexeyw/lot-map](https://github.com/alexeyw/lot-map), kept at
 
 ### Codex
 
-From a clone of this repository:
+Requires Node.js 18 or later on PATH, the Codex CLI and a Codex desktop build with MCP Apps and lifecycle hooks. Tested on Linux; Windows support is not yet verified. From a clone of this repository:
 
 ```bash
 npm ci
@@ -21,7 +21,15 @@ codex plugin marketplace add ./dist/codex-marketplace
 codex plugin add lot-map@lot-map-codex
 ```
 
-Restart Codex, review and trust the plugin's hooks (`/hooks` in the CLI), then ask **“Open Lot Map for this session.”** The MCP App requests Codex's side panel; an **Open panel** button is also available on the inline card. It does not open automatically at session start.
+Start the Codex CLI with `codex`, open `/hooks`, and review and trust Lot Map's hooks. Installation alone does not trust them. Then restart the desktop app and ask **“Open Lot Map for this session.”** The map opens as an MCP App; if it appears inline in the conversation, click **Open panel** to move it beside the chat. It does not open automatically at session start.
+
+Use **Session** to choose a captured session. **Pause** freezes the display; **Resume** brings it up to date. **Idle** means the recorded work has ended. If unfinished work has no new hooks for 30 seconds, the map freezes and says **Activity status unknown** until another event arrives.
+
+| At work in Codex | After the answer |
+| --- | --- |
+| ![At work in Codex](docs/codex-working.jpg) | ![An idle Codex session](docs/codex-idle.jpg) |
+
+*Captured from live Codex sessions, with the same map and lanes as Claude.*
 
 The Codex adapter captures local lifecycle hooks and stores a bounded history on disk. Hosted web search, skill activation, context percentage and injected hook content are not exposed. See the [Codex guide](codex/README.md) for coverage, privacy, options and updates.
 
@@ -45,7 +53,19 @@ The pane opens by itself when a session starts. In a terminal it needs at least 
 
 ## Updating
 
-These commands update Claude Code. For Codex, use the [Codex guide](codex/README.md#install).
+### Codex
+
+From an updated clone of this repository:
+
+```bash
+npm ci
+npm run package:codex
+codex plugin add lot-map@lot-map-codex
+```
+
+If `/hooks` shows Lot Map's hooks as changed, review and trust the new versions. Then restart the desktop app and ask to open Lot Map again.
+
+### Claude Code
 
 From a shell:
 
@@ -118,7 +138,9 @@ Under the map the pane draws the last two minutes on a time axis, one lane per s
 - **The number** at the end of a lane is how often the station was used this session.
 ## Options
 
-The install offers them on a screen. Later, use `/config` in a terminal or `claude plugin configure`, then restart the session.
+In Claude Code, the install offers them on a screen. Later, use `/config` in a terminal or `claude plugin configure`, then restart the session.
+
+In Codex, put settings in `~/.codex/lot-map/options.json`. The centre says `CODEX` by default; the display and memory options below use the same values. `hookRecords` and `hookReasons` are Claude-only. See the [Codex example](codex/README.md#options-and-stored-data).
 
 | Option | Default | Meaning |
 | --- | --- | --- |
