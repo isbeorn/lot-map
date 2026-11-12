@@ -23,7 +23,9 @@ codex plugin add lot-map@lot-map-codex
 
 Start the Codex CLI with `codex`, open `/hooks`, and review and trust Lot Map's hooks. Installation alone does not trust them. Then restart the desktop app and ask **“Open Lot Map for this session.”** The map opens as an MCP App; if it appears inline in the conversation, click **Open panel** to move it beside the chat. It does not open automatically at session start.
 
-Use **Session** to choose a captured session. **Pause** freezes the display; **Resume** brings it up to date. **Idle** means the recorded work has ended. If unfinished work has no new hooks for 30 seconds, the map freezes and says **Activity status unknown** until another event arrives.
+For a shortcut, type `/lot-map` in the desktop composer and select **lot-map:lot-map**, or send `$lot-map:lot-map`. In the CLI, use `/skills` to select it; the graphical pane needs the desktop app.
+
+The map selects the chat that opened it and stays with that session, even while other chats run. There is no session ID to copy. Use **Session** to look at another captured session. If the hooks cannot identify the chat, the map asks you to choose instead of guessing. **Pause** freezes the display; **Resume** brings it up to date. **Idle** means the recorded work has ended. If unfinished work has no new hooks for 30 seconds, the map freezes and says **Activity status unknown** until another event arrives.
 
 | At work in Codex | After the answer |
 | --- | --- |
@@ -63,7 +65,7 @@ npm run package:codex
 codex plugin add lot-map@lot-map-codex
 ```
 
-If `/hooks` shows Lot Map's hooks as changed, review and trust the new versions. Then restart the desktop app and ask to open Lot Map again.
+If `/hooks` shows Lot Map's hooks as changed, review and trust the new versions. Then restart the desktop app and open Lot Map again with the shortcut or by asking. The restart also loads newly added skills.
 
 ### Claude Code
 

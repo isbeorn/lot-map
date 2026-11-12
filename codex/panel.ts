@@ -13,7 +13,7 @@ interface Snapshot {
   observedAt: number;
   lastEventAt?: number | null;
 }
-const app = new App({ name: 'Lot Map', version: '0.4.1' });
+const app = new App({ name: 'Lot Map', version: '0.4.2' });
 document.body.innerHTML = `<style>
 :root { color-scheme: light dark; font: 13px system-ui, sans-serif; }
 * { box-sizing: border-box; } body { margin: 0; background: #0a0f16; color: #d7e3ed; }
@@ -60,13 +60,14 @@ function render(data: Snapshot) {
   }
 
   selector.replaceChildren(
+    ...(!selected ? [new Option('Choose a session', '', false, true)] : []),
     ...(sessions.length
       ? sessions.map((s) => {
           const label = `${s.id.slice(0, 8)}…${s.id.slice(-8)}${s.updatedAt ? ' · ' + new Date(s.updatedAt).toLocaleTimeString() : ''}`;
 
           return new Option(label, s.id, false, s.id === selected);
         })
-      : [new Option('Waiting for activity', '')])
+      : [])
   );
   setup = setupFrom({ coreName: 'CODEX', ...data.options });
   const lastEventAt =
@@ -95,8 +96,11 @@ function render(data: Snapshot) {
   }
 
   element('empty').hidden = data.receiptCount > 0;
+  element('empty').textContent = selected
+    ? 'No captured activity yet. Review and trust Lot Map’s hooks, then start a Codex turn.'
+    : 'This chat was not identified. Review and trust Lot Map’s hooks and reopen the map, or choose a session above.';
   element('status').textContent =
-    `${paused ? 'Paused' : activity.label} · ${data.receiptCount} recent hook events${lastEventAt ? ' · last event ' + new Date(lastEventAt).toLocaleTimeString() : ''}`;
+    `${!selected ? 'Choose a session' : paused ? 'Paused' : activity.label} · ${data.receiptCount} recent hook events${lastEventAt ? ' · last event ' + new Date(lastEventAt).toLocaleTimeString() : ''}`;
   element('action').textContent = activity.frozen
     ? 'Last known activity is frozen. No completion was received; check that Lot Map’s hooks are enabled and trusted.'
     : describeNow(data.board, setup.t);
@@ -117,7 +121,11 @@ function render(data: Snapshot) {
 
 app.ontoolresult = (result) => {
   if (result.structuredContent) {
-    render(result.structuredContent as unknown as Snapshot);
+    const data = result.structuredContent as unknown as Snapshot;
+    // A late initial poll must not replace the opening tool's current-chat binding.
+    selected = data.sessionId ?? undefined;
+    requestGeneration++;
+    render(data);
   }
 };
 

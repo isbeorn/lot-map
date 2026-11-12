@@ -18,6 +18,7 @@ for (const file of ['collect.mjs', 'server.mjs', 'panel.html']) {
   await cp(join(root, 'codex/dist', file), join(plugin, 'codex/dist', file));
 }
 await cp(join(root, 'codex/README.md'), join(plugin, 'README.md'));
+await cp(join(root, 'codex/skills'), join(plugin, 'codex/skills'), { recursive: true });
 await mkdir(join(marketplace, '.agents/plugins'), { recursive: true });
 const manifest = JSON.parse(await readFile(join(root, '.codex-plugin/plugin.json'), 'utf8'));
 await writeFile(

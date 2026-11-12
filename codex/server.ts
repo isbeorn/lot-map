@@ -6,14 +6,14 @@ import { z } from 'zod';
 import { boardFrom } from './adapter';
 import { listSessions, readOptions, readReceipts } from './store';
 
-const URI = 'ui://lot-map/map-v1.html';
-const server = new McpServer({ name: 'lot-map', version: '0.4.1' });
+const URI = 'ui://lot-map/map-v2.html';
+const server = new McpServer({ name: 'lot-map', version: '0.4.2' });
 const inputSchema = { session_id: z.string().max(128).optional() };
 const annotations = { readOnlyHint: true, destructiveHint: false, openWorldHint: false };
 
 async function snapshot(sessionId?: string) {
   const sessions = await listSessions();
-  const selected = sessionId ?? sessions[0]?.id;
+  const selected = sessionId;
   const receipts = selected ? await readReceipts(selected) : [];
 
   return {
@@ -53,7 +53,7 @@ server.registerTool(
   {
     title: 'Lot Map',
     description:
-      'Open the live activity map beside this Codex chat. Pass this chat’s session ID when known; otherwise the most recently active captured session is selected. The panel lets the user select a session.',
+      'Open the live activity map beside this Codex chat. Omit session_id for the current chat: the trusted Lot Map hook supplies its exact ID. Pass session_id only when the user requests another session. If hooks are unavailable, the panel asks the user to choose a session instead of guessing.',
     inputSchema,
     annotations,
     _meta: {

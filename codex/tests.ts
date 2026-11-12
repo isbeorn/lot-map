@@ -21,6 +21,7 @@ import { test } from 'node:test';
 import { drawMap, setupFrom } from '../hooks/map';
 import { EVENT_FRESHNESS_MS, activityView } from './activity';
 import { boardFrom, normalize } from './adapter';
+import { bindSession } from './bind-session';
 import {
   MAX_RECEIPTS,
   listSessions,
@@ -275,7 +276,36 @@ test('atomic receipt store isolates sessions, caps history, and restricts option
   }
 });
 
-test('bundled collector is silent, stores real-shaped hooks, and ignores malformed input', async () => {
+test('session binding affects only the open call and preserves explicit choices', () => {
+  const input = {
+    hook_event_name: 'PreToolUse',
+    tool_name: 'mcp__lot_map__lot_map_open',
+    session_id: 'chat-A',
+    tool_input: {},
+  };
+  assert.deepEqual(bindSession(input)?.hookSpecificOutput.updatedInput, { session_id: 'chat-A' });
+  assert.equal(bindSession({ ...input, tool_input: { session_id: 'chat-B' } }), null);
+
+  for (const tool_name of ['Bash', 'mcp__other__lot_map_open', 'mcp__lot_map__lot_map_snapshot']) {
+    assert.equal(bindSession({ ...input, tool_name }), null);
+  }
+
+  for (const hook_event_name of ['PostToolUse', 'PermissionRequest', 'SessionStart']) {
+    assert.equal(bindSession({ ...input, hook_event_name }), null);
+  }
+
+  for (const session_id of ['', null, 'x'.repeat(129), 'bad\nID']) {
+    assert.equal(bindSession({ ...input, session_id }), null);
+  }
+
+  for (const tool_input of [null, [], 'invalid']) {
+    assert.equal(bindSession({ ...input, tool_input }), null);
+  }
+
+  assert.equal(bindSession(null), null);
+});
+
+test('bundled collector is silent for activity, stores reduced hooks, and ignores malformed input', async () => {
   const root = await mkdtemp(join(tmpdir(), 'lot-map-collector-test-'));
 
   try {
@@ -295,6 +325,7 @@ test('bundled collector is silent, stores real-shaped hooks, and ignores malform
         tool_input: { command: 'printf SECRET', description: 'SECRET' },
       })
     );
+    assert.ifError(good.error);
     assert.equal(good.status, 0);
     assert.equal(good.stdout, '');
     assert.equal(good.stderr, '');
@@ -305,6 +336,23 @@ test('bundled collector is silent, stores real-shaped hooks, and ignores malform
     assert.equal(bad.status, 0);
     assert.equal(bad.stdout, '');
     assert.equal(bad.stderr, '');
+    const open = run(
+      JSON.stringify({
+        hook_event_name: 'PreToolUse',
+        session_id: 'current-chat',
+        tool_name: 'mcp__lot_map__lot_map_open',
+        tool_input: {},
+      })
+    );
+    assert.ifError(open.error);
+    assert.equal(open.status, 0);
+    assert.equal(open.stderr, '');
+    assert.deepEqual(JSON.parse(open.stdout).hookSpecificOutput, {
+      hookEventName: 'PreToolUse',
+      permissionDecision: 'allow',
+      updatedInput: { session_id: 'current-chat' },
+    });
+    assert.deepEqual(await readReceipts('current-chat', root), []);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -351,6 +399,40 @@ test('bundled MCP server advertises a native pane and serves isolated snapshots'
     const content = resource.contents[0]!;
     assert('text' in content);
     assert.match(content.text, /Open panel/);
+    // Another chat is newer. Opening without a trusted binding must not choose it.
+    const unbound = await client.callTool({ name: 'lot_map_open', arguments: {} });
+    assert.equal((unbound.structuredContent as { sessionId: string | null }).sessionId, null);
+    assert.equal((unbound.structuredContent as { receiptCount: number }).receiptCount, 0);
+    const pollWithoutSession = await client.callTool({ name: 'lot_map_snapshot', arguments: {} });
+    assert.equal(
+      (pollWithoutSession.structuredContent as { sessionId: string | null }).sessionId,
+      null
+    );
+    // Run the real bundled hook, then forward the rewritten input as Codex does.
+    const hook = spawnSync(process.execPath, [resolve('codex/dist/collect.mjs')], {
+      input: JSON.stringify({
+        hook_event_name: 'PreToolUse',
+        session_id: 'session-A',
+        tool_name: 'mcp__lot_map__lot_map_open',
+        tool_input: {},
+      }),
+      encoding: 'utf8',
+      env: { ...process.env, LOT_MAP_DATA: root },
+      timeout: 5000,
+    });
+    assert.ifError(hook.error);
+    assert.equal(hook.status, 0);
+    const bound = await client.callTool({
+      name: 'lot_map_open',
+      arguments: JSON.parse(hook.stdout).hookSpecificOutput.updatedInput,
+    });
+    assert.equal((bound.structuredContent as { sessionId: string | null }).sessionId, 'session-A');
+    assert.equal((bound.structuredContent as { receiptCount: number }).receiptCount, 1);
+    const manual = await client.callTool({
+      name: 'lot_map_snapshot',
+      arguments: { session_id: 'session-B' },
+    });
+    assert.equal((manual.structuredContent as { sessionId: string | null }).sessionId, 'session-B');
     const before = await client.callTool({
       name: 'lot_map_snapshot',
       arguments: { session_id: 'session-A' },

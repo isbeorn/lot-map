@@ -34,15 +34,22 @@ MCP UI and requests the desktop panel. The **Open panel** button makes the same
 request if the host initially keeps it inline. Unlike the Claude mod, the
 Codex plugin does not automatically open the pane at every session start.
 
-The tool accepts an optional `session_id`. Without it, the latest captured
-session is selected once and stays selected. Use the session selector to
-switch; activity from different sessions is never combined. **Pause** stops
+For a shortcut, type `/lot-map` in the desktop composer and select
+**lot-map:lot-map**, or send `$lot-map:lot-map`. In the CLI, use `/skills` to select it; the
+graphical pane needs the desktop app.
+
+The trusted `PreToolUse` hook supplies the current chat's exact session ID when
+`lot_map_open` is called without `session_id`. The panel stays on that session
+even while other chats run. An explicit `session_id` or the session selector
+can still show another session. If the hook is unavailable, the panel asks you
+to choose; it never falls back to the most recently active chat. **Pause** stops
 polling and animation until **Resume** is clicked.
 
 To update, run `npm ci` and `npm run package:codex` from the updated checkout,
 then reinstall with `codex plugin add lot-map@lot-map-codex`. If `/hooks` shows
 Lot Map's hooks as changed, review and trust the new versions. Then restart
-the desktop app and ask to open Lot Map again.
+the desktop app and open Lot Map again with the shortcut or by asking. The
+restart also loads newly added skills.
 
 ## Coverage and limits
 
@@ -102,7 +109,10 @@ the last two path components; network labels can contain a hostname. The map
 has local access to the captured sessions through the selector.
 
 Receipt files are created privately and atomically. Concurrent calls write
-separate files. The collector is advisory and prints nothing to the model.
+separate files. Collection is silent and advisory. The only hook output is a
+`PreToolUse` input rewrite for Lot Map's own read-only open tool: it supplies
+the current session ID using Codex's required `allow` decision. Other tools,
+permission requests, explicit session choices and panel refreshes are untouched.
 It drops malformed or oversized inputs and never returns a blocking decision.
 Deleting `~/.codex/lot-map/sessions/` clears the captured history.
 
@@ -122,7 +132,7 @@ builds a standalone local marketplace. The root `.claude-plugin/` and
 `codex/hooks.json` and `codex/mcp.json`.
 
 The regression tests cover event classification, completion, interrupted turns,
-stale activity, session isolation, private storage, and the bundled MCP server.
+stale activity, current-chat binding, session isolation, private storage, and the bundled MCP server.
 The test runner builds its test bundle in a temporary directory and removes it
 after the run. Only runtime JavaScript and HTML go into the packaged plugin.
 

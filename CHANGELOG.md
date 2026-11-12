@@ -2,7 +2,14 @@
 
 What changed in each version of lot-map, newest first. To get a new version, see [Updating](README.md#updating).
 
-## Unreleased — Codex adapter 0.4.1
+## Unreleased — Codex adapter 0.4.2
+
+- Select the current chat when opening Lot Map, using its trusted tool hook. Keep manual session selection, and ask the user to choose when the chat cannot be identified instead of guessing from recent activity.
+- Add a bundled Lot Map skill for the desktop slash menu and the CLI skill picker.
+- Keep a late initial refresh from replacing the session selected by the opening tool.
+- Verified current-chat selection in live Codex runs with a newer competing session, and the shortcut in the desktop app.
+
+## Codex adapter 0.4.1
 
 - Added a Codex plugin with local command hooks and a native MCP App side panel, sharing Claude's map and timeline renderer.
 - Added session selection, pause/resume, sanitized local receipts with bounded retention, and standalone Codex marketplace packaging.

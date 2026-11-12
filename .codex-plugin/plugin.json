@@ -1,10 +1,11 @@
 {
   "name": "lot-map",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "A live map of Codex activity beside the chat, driven by local lifecycle hooks.",
   "license": "MIT",
   "mcpServers": "./codex/mcp.json",
   "hooks": "./codex/hooks.json",
+  "skills": "./codex/skills/",
   "interface": {
     "displayName": "Lot Map",
     "shortDescription": "See files, shell, model and agents at work",
