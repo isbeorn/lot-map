@@ -6,21 +6,23 @@ A mod for Claude Code: a live map of the work, in a pane beside the chat. Every 
 
 *A made-up session replayed through the mod's own drawing code. [Video (MP4)](docs/demo.mp4).*
 
+This is a fork of [alexeyw/lot-map](https://github.com/alexeyw/lot-map), kept at [isbeorn/lot-map](https://github.com/isbeorn/lot-map). The commands below install the fork; issues and pull requests for it go to the fork's repository.
+
 ## Install
 
 At the prompt of a terminal session:
 
 ```
-/plugin install lot-map --marketplace alexeyw/lot-map
+/plugin install lot-map --marketplace isbeorn/lot-map
 ```
 
 Answer `y` to add the marketplace, then choose a scope. From a shell:
 
 ```bash
-claude plugin install lot-map --marketplace alexeyw/lot-map
+claude plugin install lot-map --marketplace isbeorn/lot-map
 ```
 
-In the desktop app: click **+** next to the prompt box, then **Plugins**, **Add marketplace** with `alexeyw/lot-map`, then **Add plugin**.
+In the desktop app: click **+** next to the prompt box, then **Plugins**, **Add marketplace** with `isbeorn/lot-map`, then **Add plugin**.
 
 The pane opens by itself when a session starts. In a terminal it needs at least 144 columns and draws text only; otherwise type `/lot-map`. Built and tested on Claude Code 2.1.321 on macOS; users report it working on Windows as well.
 
@@ -167,6 +169,20 @@ A fault on the map never reaches a tool call or a model turn.
 ```bash
 claude plugin test .
 claude plugin validate .
+```
+
+Lint and format (ESLint and Prettier, LF line endings):
+
+```bash
+npm install
+npm run lint
+npm run format:check
+```
+
+Type check, against the declarations the engine writes to `.claude-plugin/types/` the first time it loads the mod from this folder (`claude --plugin-dir .`):
+
+```bash
+npm run typecheck
 ```
 
 Words live in `hooks/text.ts`; a new language is one more table there and one more value of `language` in `.claude-plugin/plugin.json`.
